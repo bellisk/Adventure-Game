@@ -5,6 +5,11 @@ class Room:
 		self.item = item
 		self.connections = {}
 
+class Character:
+	def __init__(self, description, location):
+		self.description = description
+		self.location = location
+
 entrance = Room("cold, bare entrance chamber", None, None)
 grisly_chamber = Room("grisly chamber", "wizened old witch", "golden goblet")
 long_cave = Room("long, echoing cave", "green-skinned child", "bag of peas")
