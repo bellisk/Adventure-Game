@@ -1,21 +1,44 @@
+import random
+
 class Room:
-	def __init__(self, description, inhabitant, item):
+	def __init__(self, description, inhabitants, inventory):
 		self.description = description
-		self.inhabitant = inhabitant
-		self.item = item
+		self.inhabitants = inhabitants
+		self.inventory = inventory
 		self.connections = {}
 
 class Character:
-	def __init__(self, description, location):
+	def __init__(self, description, location, inventory):
 		self.description = description
-		self.location = location
+		self.location = None
+		self.move(location)
+		self.inventory = inventory
+	def move(self, new_location):
+		if self.location != None:
+			self.location.inventory.remove(self)
+		self.location = new_location
+		if self.location != None:
+			self.location.inventory.append(self)
 
-entrance = Room("cold, bare entrance chamber", None, None)
-grisly_chamber = Room("grisly chamber", "wizened old witch", "golden goblet")
-long_cave = Room("long, echoing cave", "green-skinned child", "bag of peas")
-small_alcove = Room("tiny rock alcove", "bearded dwarf", "iron mallet")
-glass_chamber = Room("chamber with glassy walls", None, "sack of coal")
-chimney_room = Room("very tall room like a chimney", "disembodied voice", None)
+class Item:
+	def __init__(self, description, owner):
+		self.description = description
+		self.owner = None
+		self.move(owner)
+	def move(self, new_owner):
+		if self.owner != None:
+			self.owner.inventory.remove(self)
+		self.owner = new_owner
+		if self.owner != None:
+			self.owner.inventory.append(self)
+
+#Rooms
+entrance = Room("cold, bare entrance chamber", [], [])
+grisly_chamber = Room("grisly chamber", [], [])
+long_cave = Room("long, echoing cave", [], [])
+small_alcove = Room("tiny rock alcove", [], [])
+glass_chamber = Room("chamber with glassy walls", [], [])
+chimney_room = Room("very tall room like a chimney", [], [])
 
 entrance.connections = {"north": grisly_chamber, "south": long_cave, "east": small_alcove}
 grisly_chamber.connections = {"south": entrance, "north": glass_chamber, "east": chimney_room}
@@ -23,6 +46,38 @@ long_cave.connections = {"north": entrance}
 small_alcove.connections = {"west": entrance, "north": chimney_room}
 glass_chamber.connections = {"south": grisly_chamber}
 chimney_room.connections = {"west": grisly_chamber, "south": small_alcove}
+
+#Characters
+wizened_witch = Character("wizened old witch", grisly_chamber, [])
+green_child = Character("green-skinned child", long_cave, [])
+bearded_dwarf = Character("bearded dwarf", small_alcove, [])
+disembodied_voice = Character("disembodied voice", chimney_room, [])
+
+#Items
+peas = Item("bag of peas", None)
+goblet = Item("golden goblet", None)
+mallet = Item("mallet of iron", None)
+chips = Item("bag of tortilla chips", None)
+necklace = Item("glass bead necklace", None)
+tortoise = Item("small green tortoise", None)
+sword = Item("sword", None)
+flashlight = Item("flashlight", None)
+
+room_list = [entrance, grisly_chamber, long_cave, small_alcove, glass_chamber, chimney_room]
+character_list = [wizened_witch, green_child, bearded_dwarf, disembodied_voice, None, None]
+item_list = [peas, goblet, mallet, chips, necklace, tortoise]
+
+#Shuffle the lists
+random.shuffle(room_list)
+random.shuffle(character_list)
+random.shuffle(item_list)
+
+#Make room-character-item tuples and move characters and items into the rooms
+for x in zip(room_list, character_list, item_list):
+	if x[1] != None:
+		x[1].move(x[0])
+	if x[2] != None:
+		x[2].move(x[0])
 
 location = entrance
 
@@ -57,11 +112,11 @@ while not answer in ["1", "2"]:
 inventory = []
 
 if answer == "1":
-	inventory.append("sword")
-	print "You have a sword in your inventory!\n(Press any key)"
+	inventory.append(sword)
+	print "You have a sword in your inventory!\n(Press Enter key)"
 else:
-	inventory.append("flashlight")
-	print "You have a flashlight in your inventory!\n(Press any key)"
+	inventory.append(flashlight)
+	print "You have a flashlight in your inventory!\n(Press Enter key)"
 
 chamber_tally = 0
 
@@ -69,32 +124,50 @@ while True:
 
 	raw_input()
 	answer_list = []
+	answer_dict = {}
 	
 	question = "\nYou are in a " + location.description + "."
-	if "flashlight" in inventory:
-		if location.inhabitant != None:
-			question = question + "\nThere is a " + location.inhabitant + " here."
-		if location.item != None:
-			question = question + "\nOn the floor you see a " + location.item + "."
+	if flashlight in inventory:
+		if len(location.inhabitants) != 0:
+			for character in location.inhabitants:
+				question = question + "\nThere is a " + character.description + " here."
+		if len(location.inventory) != 0:
+			for item in (location.inventory):
+				question = question + "\nOn the floor you see a " + item.description + "."
 	else:
 		question = question + "\nIt's too dark to see anything in here."
 	question = question + "\nWhat do you want to do?"
 
-	if "flashlight" in inventory:
-		if location.inhabitant != None:
-			question = question + "\n    >Talk to the " + location.inhabitant + " (talk)"
-			answer_list.append("talk")
-		if location.item != None:
-			question = question + "\n    >Pick up the " + location.item + " (pick up)"
-			answer_list.append("pick up")
+	qcount = 1
+
+	if flashlight in inventory:
+		if len(location.inhabitants) != 0:
+			for character in location.inhabitants:
+				question = question + "\n    >Talk to the " + character.description + " (" + str(qcount) + ")"
+				answer_list.append(str(qcount))
+				answer_dict[qcount] = ("talk", character)
+				qcount += 1
+		if len(location.inventory) != 0:
+			for item in location.inventory:
+				question = question + "\n    >Pick up the " + item.description + " (" + str(qcount) + ")"
+				answer_list.append(str(qcount))
+				answer_dict[qcount] = ("pick up", item)
+				qcount += 1
 	else:
-		question = question + "\n    >Wave your sword around (wave)\n    >Yell out hello (yell)"
-		answer_list.extend(["wave", "yell"])
+		question = question + "\n    >Wave your sword around (" + str(qcount) + ")\n    >Yell out hello (" + str(qcount + 1) + ")"
+		answer_list.extend([str(qcount), str(qcount + 1)])
+		answer_dict[qcount] = ("wave", None)
+		answer_dict[qcount + 1] = ("yell", None)
+		qcount += 2
 	if location == entrance:
-		question = question + "\n    >Leave the Haunted Cave (leave)"
-		answer_list.append("leave")
-	question = question + "\n    >Drop something (drop)"
-	answer_list.append("drop")
+		question = question + "\n    >Leave the Haunted Cave (" + str(qcount) + ")"
+		answer_list.append(str(qcount))
+		answer_dict[qcount] = ("leave", None)
+		qcount += 1
+	question = question + "\n    >Drop something (" + str(qcount) + ")"
+	answer_list.append(str(qcount))
+	answer_dict[qcount] = ("drop", None)
+	qcount += 1
 	for direction in location.connections.keys():
 		question = question + "\n    >Go " + direction + " (" + direction + ")"
 		answer_list.append(direction)
