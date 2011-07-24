@@ -8,17 +8,23 @@ class Room:
 		self.connections = {}
 
 class Character:
-	def __init__(self, description, location, inventory):
+	def __init__(self, description, location, inventory, friendly):
 		self.description = description
 		self.location = None
 		self.move(location)
 		self.inventory = inventory
+		self.friendly = friendly
 	def move(self, new_location):
 		if self.location != None:
-			self.location.inventory.remove(self)
+			self.location.inhabitants.remove(self)
 		self.location = new_location
 		if self.location != None:
-			self.location.inventory.append(self)
+			self.location.inhabitants.append(self)
+	def talk(self):
+		if self.friendly == True:
+			print "The " + self.description + " wishes you a nice day."
+		else:
+			print "The " + self.description + " threatens your bodily integrity."
 
 class Item:
 	def __init__(self, description, owner):
@@ -48,10 +54,10 @@ glass_chamber.connections = {"south": grisly_chamber}
 chimney_room.connections = {"west": grisly_chamber, "south": small_alcove}
 
 #Characters
-wizened_witch = Character("wizened old witch", grisly_chamber, [])
-green_child = Character("green-skinned child", long_cave, [])
-bearded_dwarf = Character("bearded dwarf", small_alcove, [])
-disembodied_voice = Character("disembodied voice", chimney_room, [])
+wizened_witch = Character("wizened old witch", grisly_chamber, [], True)
+green_child = Character("green-skinned child", long_cave, [], False)
+bearded_dwarf = Character("bearded dwarf", small_alcove, [], True)
+disembodied_voice = Character("disembodied voice", chimney_room, [], False)
 
 #Items
 peas = Item("bag of peas", None)
@@ -113,19 +119,15 @@ inventory = []
 
 if answer == "1":
 	inventory.append(sword)
-	print "You have a sword in your inventory!\n(Press Enter key)"
+	print "You have a sword in your inventory!"
 else:
 	inventory.append(flashlight)
-	print "You have a flashlight in your inventory!\n(Press Enter key)"
-
-chamber_tally = 0
+	print "You have a flashlight in your inventory!"
 
 while True:
 
-	raw_input()
-	answer_list = []
-	answer_dict = {}
-	
+	raw_input("(Press Enter key)")
+
 	question = "\nYou are in a " + location.description + "."
 	if flashlight in inventory:
 		if len(location.inhabitants) != 0:
@@ -138,93 +140,117 @@ while True:
 		question = question + "\nIt's too dark to see anything in here."
 	question = question + "\nWhat do you want to do?"
 
+	answer_dict = {}
 	qcount = 1
 
 	if flashlight in inventory:
 		if len(location.inhabitants) != 0:
 			for character in location.inhabitants:
 				question = question + "\n    >Talk to the " + character.description + " (" + str(qcount) + ")"
-				answer_list.append(str(qcount))
 				answer_dict[qcount] = ("talk", character)
+				qcount += 1
+		if len(location.inhabitants) != 0:
+			for character in location.inhabitants:
+				question = question + "\n    >Pick up the " + character.description + " (" + str(qcount) + ")"
+				answer_dict[qcount] = ("pick up", character)
 				qcount += 1
 		if len(location.inventory) != 0:
 			for item in location.inventory:
 				question = question + "\n    >Pick up the " + item.description + " (" + str(qcount) + ")"
-				answer_list.append(str(qcount))
 				answer_dict[qcount] = ("pick up", item)
 				qcount += 1
 	else:
 		question = question + "\n    >Wave your sword around (" + str(qcount) + ")\n    >Yell out hello (" + str(qcount + 1) + ")"
-		answer_list.extend([str(qcount), str(qcount + 1)])
 		answer_dict[qcount] = ("wave", None)
 		answer_dict[qcount + 1] = ("yell", None)
 		qcount += 2
 	if location == entrance:
 		question = question + "\n    >Leave the Haunted Cave (" + str(qcount) + ")"
-		answer_list.append(str(qcount))
 		answer_dict[qcount] = ("leave", None)
 		qcount += 1
 	question = question + "\n    >Drop something (" + str(qcount) + ")"
-	answer_list.append(str(qcount))
 	answer_dict[qcount] = ("drop", None)
 	qcount += 1
 	for direction in location.connections.keys():
-		question = question + "\n    >Go " + direction + " (" + direction + ")"
-		answer_list.append(direction)
+		question = question + "\n    >Go " + direction + " (" + str(qcount) + ")"
+		answer_dict[qcount] = ("go", direction)
+		qcount += 1
 
 	answer = ""
-	while not answer in answer_list:
-	    answer = raw_input(question + "\n>")
+	while not answer in answer_dict.keys():
+		try:
+			answer = int(raw_input(question + "\n>"))
+		except:
+			print "Please enter a number."
 
-	if answer == "talk":
-		print "The " + location.inhabitant + " tells you a long and preposterous story."
+	if answer_dict[answer][0] == "talk":
+		#print "The " + answer_dict[answer][1].description + " tells you a long and preposterous story."
+		answer_dict[answer][1].talk()
 		continue
-	if answer == "pick up":
-		print "You have a " + location.item + " in your inventory!"
-		inventory.append(location.item)
-		location.item = None
+	if answer_dict[answer][0] == "pick up":
+		if isinstance(answer_dict[answer][1], Character):
+			if answer_dict[answer][1].friendly == True:
+				print "The " + answer_dict[answer][1].description + " chides you for your rudeness."
+			else:
+				print "The " + answer_dict[answer][1].description + " beats you soundly about the head."
+		else:
+			print "You have a " + answer_dict[answer][1].description + " in your inventory!"
+			inventory.append(answer_dict[answer][1])
+			answer_dict[answer][1].move(None)
 		continue
-	if answer == "wave":
+	if answer_dict[answer][0] == "wave":
 		print "You swing your sword wildly about."
-		if location.inhabitant != None:
-			print "There is a shout very close to you.\nYou find an injured " + location.inhabitant + " on the floor."
+		if len(location.inhabitants) != 0:
+			for character in location.inhabitants:
+				print "There is a shout very close to you.\nYou find an injured " + character.description + " on the floor."
 		else:
 			print "After a while you feel quite silly and put it away again."
 		continue
-	if answer == "yell":
+	if answer_dict[answer][0] == "yell":
 		print "You hear the echo of your own voice."
-		if location.inhabitant != None:
+		if len(location.inhabitants) != 0:
 			print "There are footsteps running away."
-			location.inhabitant = None
-		if location.item != None:
-			print "On the floor you find a " + location.item + ". You pick it up."
-			inventory.append(location.item)
-			location.item = None
+			for character in location.inhabitants:
+				direction = random.choice(location.connections.keys())
+				character.move(location.connections[direction])
+		if len(location.inventory) != 0:
+			for item in location.inventory:
+				print "On the floor you find a " + item.description + ". You pick it up."
+				inventory.append(item)
+				item.move(None)
 		continue
-	if answer == "leave":
-		print "You leave the cave and start the journey home.\n\nYour inventory is:"
+	if answer_dict[answer][0] == "leave":
+		print "You leave the cave and start the journey home.\n\nYour inventory is:\n"
 		for n in inventory:
-			print n
-		print "\nWell done! You have made the clan of " + pants_colour.capitalize() + "-pants proud."
+			print ">" + n.description
+		print "\nWell done! You have made the clan of " + pants_colour.capitalize() + "-pants proud.\n"
 		break
-	if answer == "drop":
+	if answer_dict[answer][0] == "drop":
 		if inventory == []:
 			print "You have nothing to drop!"
 		else:
-			drop_list = ["nothing"]
-			drop_selection = "What do you want to drop?\n    >Nothing (nothing)"
+			dcount = 1
+			drop_dict = {}
+			drop_selection = "What do you want to drop?\n    >Nothing (" + str(dcount) + ")"
+			drop_dict[dcount] = "nothing"
+			dcount += 1
 			for item in inventory:
-				drop_selection = drop_selection + "\n    >" + item + " (" + item + ")"
-				drop_list.append(item)
+				drop_selection = drop_selection + "\n    >" + item.description + " (" + str(dcount) + ")"
+				drop_dict[dcount] = item
+				dcount += 1
 			drop_answer = ""
-			while not drop_answer in drop_list:
-				drop_answer = raw_input(drop_selection + "\n>")
-			if drop_answer == "nothing":
+			while not drop_answer in drop_dict.keys():
+				try:
+					drop_answer = int(raw_input(drop_selection + "\n>"))
+				except:
+					print "Please enter a number."
+			if drop_dict[drop_answer] == "nothing":
 				continue
 			else:
-				print "You drop the " + drop_answer + " onto the floor."
-				inventory.remove(drop_answer)
-				location.item = drop_answer
+				print "You drop the " + drop_dict[drop_answer].description + " onto the floor."
+				inventory.remove(drop_dict[drop_answer])
+				drop_dict[drop_answer].move(location)
 				continue
-	print "You go " + answer + " to the next chamber."
-	location = location.connections[answer]
+
+	print "You go " + answer_dict[answer][1] + " to the next chamber."
+	location = location.connections[answer_dict[answer][1]]
